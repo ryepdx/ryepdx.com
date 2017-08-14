@@ -1,0 +1,265 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>TDD in C</h1>
+
+<p>I do frontend AngularJS work for a client in Portland. One of the things I
+really like about their setup is its test-friendliness. They use Grunt to
+watch the client-side files and run tests and re-compile everything
+automatically when a change is detected. Everything gets wiped from the
+&ldquo;build&rdquo; directory when the process starts, and a failing test or JSLint
+warning blocks the whole process. This renders the developer&rsquo;s copy of the web
+app inaccessible until the issue is addressed. I&rsquo;ve found I enjoy this
+particular workflow as I&rsquo;m immediately made aware of when I write something
+that breaks the tests. It keeps me from building on top of broken foundations.</p>
+
+<p>This weekend I decided I wanted to sharpen my C skills by writing <a href="https://github.com/ryepdx/keyphrase">a simple
+CLI utility to convert strings of hexadecimal to memorable phrases and back
+again</a>. Since my intended use case was
+encoding and recovering 256-bit private keys, I wanted to take extra care to
+ensure correctness of output. So I set out with the intention of writing both
+unit and user acceptance tests using a TDD flow similar to the one I use in my
+AngularJS work.</p>
+
+<h2>Unit Tests</h2>
+
+<p>One of the things I really like about C is its tininess. In light of this, and
+since I was just writing a small CLI utility to push bits around, I sought out
+the most minimal solution I could find. I decided to use
+<a href="http://www.jera.com/techinfo/jtns/jtn002.html">MinUnit</a>, which I modified a
+very little bit to more resemble <a href="http://karma-runner.github.io">KarmaJS</a>&rsquo;s
+syntax:</p>
+
+<pre><code>int tests_run = 0;  
+#define _it_should(message, test) do { if (!(test)) return message; } while (0)  
+#define _run_test(test) do { char *message = test(); tests_run++; if (message) return message; } while (0)  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/b75b78115dbc6eeb924c79b380a557b06c060d63/unit_tests.c">minunit.h</a></p>
+
+<p>This allowed me to write my test runner like this:</p>
+
+<pre><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include "minunit.h"  
+#include "funcs.h"
+
+static char * is_hex_01a() {  
+    char hex[] = "0xB300562F8F9A961E158BDE2D4CCD2A64BB1D923208939714675BFFB17BBAF2A3";
+    _it_should("return true for hex strings with leading '0x's", is_hex(hex));
+    return 0;  
+}
+
+static char * run_tests() {  
+    _run_test(is_hex_01a);
+    return 0;  
+}
+
+#define KNRM "\x1B[0m"  
+#define KRED "\x1B[1;37;41m"  
+#define KGRN "\x1B[1;42;37m"
+
+int main(int argc, char **argv) {  
+    char *result = run_tests();  
+
+    if (result != 0) {  
+        printf(KRED "**FAIL**: %s" KNRM "\n", result);
+
+    } else {  
+        printf(KGRN "**PASSED ALL %d TESTS**" KNRM "\n", tests_run);  
+    }  
+}  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/b75b78115dbc6eeb924c79b380a557b06c060d63/unit_tests.c">unit_tests.c</a></p>
+
+<p>In all, I ended up writing 33 such tests. Running them was just a matter of
+compiling my <code>tests.c</code> file and then executing the resulting binary. I put
+together the beginnings of a Makefile to help with compilation:</p>
+
+<pre><code>#CC = gcc  
+CFLAGS = -Wall -std=c99
+
+tests: unit_tests.c funcs.h funcs.c  
+    $(CC) $(CFLAGS) -o unit_tests unit_tests.c funcs.c
+
+clean:  
+    rm -f unit_tests *~ *.o core  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/b75b78115dbc6eeb924c79b380a557b06c060d63/Makefile">Makefile</a></p>
+
+<p>The last piece for me was getting something in place to watch the file system
+and then kick off <code>make tests</code> and run the resulting binary. <a href="https://github.com/rvoicilas/inotify-tools">inotify-
+tools</a> supplies a CLI utility
+called <code>inotifywait</code> that allows one to listen for filesystem events and
+blocks until a filesystem event is seen. As luck would have it, I was able to
+install it under Ubuntu with <code>sudo apt-get install inotify-tools</code>. I then
+wrote a script to take advantage of it:</p>
+
+<pre><code>run_tests() {  
+    make -s clean  
+    make -s tests  
+    ./unit_tests  
+}
+
+if [ "$1" == "--watch" ] || [ "$1" == "-w" ]; then  
+    while true; do  
+        clear  
+        run_tests  
+        inotifywait -q -e close_write {*.c,*.h}  
+    done  
+else  
+    run_tests  
+fi  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/a2bbbe18cfdcaeb998287b59304802a505cda96c/unit_tests.sh">unit_tests.sh</a></p>
+
+<p>The above script is pretty simple. It just defines a function called
+<code>run_tests</code> that silently (<code>-s</code>) runs the <code>clean</code> and <code>tests</code> tasks in the
+Makefile I wrote, and then runs the <code>unit_tests</code> binary produced. If I pass
+<code>--watch</code> or <code>-w</code> as the first argument to the script, it clears the screen,
+runs the tests, and then waits until one of the <code>.c</code> or <code>.h</code> files in the
+project&rsquo;s root is closed after being written to, and then repeats the whole
+process until the script is halted. If <code>inotifywait</code> is not on the developer&rsquo;s
+system, or if one is using something like Travis-CI to run tests, executing
+the script with no flags just runs the tests and exits.</p>
+
+<p>Now that I had a solid workflow for my unit tests in place, it was time to put
+together my user acceptance tests. This proved to be pretty simple as well.</p>
+
+<h2>User Acceptance Tests</h2>
+
+<p>Since user acceptance tests are all about testing the whole system, first I
+updated my Makefile to allow building the project within a subdirectory:</p>
+
+<pre><code>#CC = gcc  
+CFLAGS = -Wall -std=c99  
+BIN_DIR = ${DESTDIR}/usr/bin
+
+portable: keyphrase.c funcs.h funcs.c tests  
+    mkdir -p portable  
+    cp words.txt portable  
+    cp words.txt.gpg portable  
+    $(CC) $(CFLAGS) -o portable/keyphrase keyphrase.c funcs.c
+
+tests: unit_tests.c funcs.h funcs.c  
+    $(CC) $(CFLAGS) -o unit_tests unit_tests.c funcs.c
+
+clean:  
+    rm -fr portable  
+    rm -f keyphrase unit_tests *~ *.o core  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/a2bbbe18cfdcaeb998287b59304802a505cda96c/Makefile">Makefile</a></p>
+
+<p>Once I&rsquo;d done that, I just put together a shell script to compile the utility
+into a subdirectory and check its output against what was expected.</p>
+
+<pre><code>failed_tests=0  
+run_tests=0
+
+it_should() {  
+    if [ "$2" != "$3" ]  
+    then  
+        echo -e '\E[37;44m'"\033[1;37;41m**FAIL**: it should $1 \n          ↪ Expected '$2' but got '$3' \n\033[0m"  
+        failed_tests=$((failed_tests + 1))  
+    else  
+        echo -e '\E[37;44m'"\033[1;42;37m**PASS**: it should $1 \033[0m"  
+    fi  
+    run_tests=$((run_tests + 1))  
+}
+
+test_key_to_phrase() {  
+    actual=$(./portable/keyphrase 0xFFFF562F8F9A961E158BDE2D4CCD2A64BB1D923208939714675BFAB28BBAF2A3)  
+    expected="zyzzyvas flutings mushers octopuses bizones talkier evokers coagent ringer neutral antipode omnibus havening whistles mistitled vacuums"  
+    it_should "return the correct passphrase for a 256-bit key" "$expected" "$actual"  
+}
+
+run_tests() {  
+    failed_tests=0  
+    run_tests=0  
+    make -s clean  
+    make -s portable  
+    test_key_to_phrase
+
+    if [ "$failed_tests" -eq 0 ]; then  
+        echo -e '\E[37;44m'"\033[1;42;37m**PASSED ALL $run_tests TESTS** \033[0m"  
+    else  
+        echo -e '\E[37;44m'"\033[1;37;41m**FAILED $failed_tests OUT OF $run_tests TESTS** \033[0m"  
+    fi  
+}
+
+if [ "$1" == "--watch" ] || [ "$1" == "-w" ]; then  
+    while true; do  
+        clear  
+        run_tests  
+        inotifywait -q -e close_write {*.c,*.h}  
+    done  
+else  
+    run_tests  
+fi  
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/a2bbbe18cfdcaeb998287b59304802a505cda96c/ua_tests.sh">ua_tests.sh</a></p>
+
+<p>I ended up writing four more tests using the same format as the example test
+shown above. With inotify-tools installed and the combination of C code and
+bash scripts outlined above, I had a pretty nice TDD workflow set up. The only
+issue was that sometimes <code>ua_tests.sh</code> and <code>unit_tests.sh</code> blocked each other
+by trying to access the same files at the same time. To resolve <em>that</em> issue,
+I wrote a third script to touch them off in serial:</p>
+
+<pre><code>run_tests() {  
+    echo -e "\nUser Acceptance Tests\n====================="  
+    ./ua_tests.sh
+
+    echo "\nUnit Tests\n=========="  
+    ./unit_tests.sh  
+}
+
+if [ "$1" == "--watch" ] || [ "$1" == "-w" ]; then  
+    while true; do  
+        clear  
+        run_tests  
+        change=$(inotifywait -q -e close_write,moved_to,create {*.c,*.h})  
+    done  
+else  
+    run_tests  
+fi
+</code></pre>
+
+<p><a href="https://github.com/ryepdx/keyphrase/blob/a2bbbe18cfdcaeb998287b59304802a505cda96c/tests.sh">tests.sh</a></p>
+
+<p>With that, I had a reliable testing workflow that kept me constantly updated
+on whether my C code was passing its tests or not. It felt a lot like my
+AngularJS workflow, and it helped me catch a lot of bugs the moment I wrote
+them rather than further down the line.</p>
+
+<p>Later on, I also added desktop notifications to show me my test output using
+<a href="http://ss64.com/bash/notify-send.html">notify-send</a>, a CLI utility that comes
+installed with Ubuntu. You can take a look at the later copies of
+<a href="https://github.com/ryepdx/keyphrase/blob/3b300ea0cce4323dad983a3b7fae3e844300e56e/ua_tests.sh"><code>ua_tests.sh</code></a>
+and
+<a href="https://github.com/ryepdx/keyphrase/blob/3b300ea0cce4323dad983a3b7fae3e844300e56e/unit_tests.sh"><code>unit_tests.sh</code></a>
+on Github if you want to see how I did that.</p>
+
+<p>Any questions or suggestions about my TDD setup? Comments are always welcome!</p>
+
+<p><strong>Addendum:</strong> Apparently <a href="http://www.reddit.com/r/programming/comments/2hrgxc/tdd_in_c/ckvfzft">I could have done without maintaining a list of function calls to my tests</a>. That would have streamlined my workflow even further!</p>
+
+<p><strong>Addendum 2:</strong> As someone on reddit <a href="http://www.reddit.com/r/programming/comments/2hrgxc/tdd_in_c/ckvomrt">pointed out to me</a>, there are already a number of TDD frameworks for C, not the least of which are <a href="http://check.sourceforge.net/">Check</a> and <a href="http://ccodearchive.net/info/tap.html">TAP</a>. If you&rsquo;re planning on building anything bigger than what I&rsquo;ve built here, you may want to use something more substantial than what I came up with.</p>
+    </body>
+</html>

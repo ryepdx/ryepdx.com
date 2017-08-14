@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Message Boxes in OpenERP</h1>
+
+<p><em>Edit: This technique does not appear to work in Odoo/OpenERP 8</em></p>
+
+<p>Being able to show a user a message is a pretty basic, important piece of
+functionality. It took me a while to figure out how to trigger a user-visible
+message from the server in OpenERP, but I eventually managed it. Given
+<a href="http://stackoverflow.com/questions/17017215/warning-message-not-working-%0Aon-openerp">the</a> <a href="http://stackoverflow.com/questions/15654286/how-can-i%0A-display-log-message-in-openerp-web-client">answers</a> on Stack Overflow, I figured I
+should share this valuable finding with the rest of the world.</p>
+
+<p>To set the stage, I was writing code to cancel postage on packages at the
+click of a button in the package tree view. Sometimes the postage cannot be
+cancelled for one reason or another and the shipping server returns a message
+explaining why. In that case I wanted to display whatever message the shipping
+server was returning to the end user.</p>
+
+<p>OpenERP 7 comes with two client actions that will result in a
+<a href="http://growl.info/">Growl</a>-like message in the user&rsquo;s browser: &ldquo;action_warn&rdquo;
+and &ldquo;action_info.&rdquo; They both take three parameters: &ldquo;title,&rdquo; &ldquo;text,&rdquo; and
+&ldquo;sticky.&rdquo; The first two are the title text and the message text, respectively,
+as strings. The third is a boolean indicating whether the message should
+remain on the screen until the user closes it by clicking the &ldquo;x&rdquo; in the
+corner of it. Setting this to false will result in the message fading away on
+its own after a few seconds.</p>
+
+<p>To trigger these client actions from a server action, just have the server
+action return a dictionary like this one:</p>
+
+<pre><code>{  
+    'type': 'ir.actions.client',  
+    'tag': 'action_warn',  
+    'name': 'Failure',  
+    'params': {  
+       'title': 'Postage Cancellation Failed',  
+       'text': 'Shipment is outside the void period.',  
+       'sticky': True  
+    }  
+}
+</code></pre>
+
+<p>Here&rsquo;s a fuller example for those of you who need more illustration:</p>
+
+<pre><code>from openerp.osv import fields, osv  
+from openerp.tools.translate import _
+
+
+class growling_growler(osv.osv):  
+    _name = "growling.growler"  
+    _columns = {  
+        'name': fields.char(  
+            'Name', size=32, required=True  
+        )  
+    }
+
+
+    def growl(self, cr, uid, ids, context=None):  
+        return {  
+            'type': 'ir.actions.client',  
+            'tag': 'action_info',  
+            'name': _('Growl'),  
+            'params': {  
+                'title': _('Grr...'),  
+                'text': _('I am growling at you!'),  
+                'sticky': False  
+            }  
+        }
+</code></pre>
+
+<p>And the XML:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;openerp&gt;
+    &lt;data&gt;
+        &lt;record id="growling_growler_tree"
+                model="ir.ui.view"&gt;
+            &lt;field name="name"&gt;
+                growling.growler.tree
+            &lt;/field&gt;
+            &lt;field name="model"&gt;
+                growling.growler
+            &lt;/field&gt;
+            &lt;field name="arch" type="xml"&gt;
+&lt;tree string='Growling Growlers'&gt;
+                    &lt;field name='name'&amp;#47;&gt;
+                    &lt;button string="Growl!"
+                            name="growl"
+                            type="object" /&gt;
+                &lt;/tree&gt;
+            &lt;/field&gt;
+        &lt;/record&gt;
+    &lt;/data&gt;
+&lt;/openerp&gt;
+</code></pre>
+    </body>
+</html>

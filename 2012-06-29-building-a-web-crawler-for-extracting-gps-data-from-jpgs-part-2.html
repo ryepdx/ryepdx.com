@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Building a web crawler for extracting GPS data from JPGs (part 2)</h1>
+
+<p><strong>Recap:</strong></p>
+
+<pre><code>&gt;&gt;&gt; f = open("gps_exif.jpg", "rb")  
+
+&gt;&gt;&gt; f.seek(20)  
+
+&gt;&gt;&gt; f.read(10)  
+'\xff\xe1#\x86Exif\x00\x00'
+</code></pre>
+
+<p><strong> Big-endian, little-endian:</strong></p>
+
+<p>The endianness of the JPEG is determined by the four bytes following the APP1
+opening headers. &lsquo;II\x2a\x00&rsquo; stands for Intel, whose CPUs are little-endian,
+and &lsquo;MM\x00\x2a&rsquo; stands for Motorola, whose 680x0 CPUs are big-endian.
+(<a href="http://en.wikipedia.org/wiki/Endianness#Endianness_in_files_and_byte_swap">Source</a>)</p>
+
+<pre><code>&gt;&gt;&gt; f.read(4)  
+'MM\x00*'
+</code></pre>
+
+<p>Awesome, we have a big-endian file on our hands. So the higher-order byte will
+come first in this encoding. Concretely, this means that the number 256 will
+be encoded as &lsquo;\x01\x00&rsquo; instead of &lsquo;\x00\x10&rsquo; (as it would be in little-
+endian encoding).</p>
+
+<p>&ldquo;So how do I deal with endianness,&rdquo; you ask? Here are a couple functions I
+totally copied from <a href="http://fetidcascade.com/public/minimal_exif_reader.py">an example
+script</a> on
+<a href="http://fetidcascade.com/">fetidcascade.com</a>:</p>
+
+<pre><code>  def s2n_motorola(self, str):  
+    x = 0  
+
+    for c in str:  
+      x = (x &lt;&lt; 8) | ord(c)  
+
+    return x
+
+
+  def s2n_intel(self, str):  
+    x = 0  
+    y = 0  
+
+    for c in str:  
+      x = x | (ord(c) &lt;&lt; y)  
+      y = y + 8  
+
+    return x
+</code></pre>
+
+<p>These will translate the hex values for you depending on whether your file is
+big-endian or little-endian.</p>
+
+<p>All the offsets for the IFDs will be in terms of bytes from the end of the
+null-terminated &ldquo;Exif&rdquo; string we saw earlier. For purposes of our exploration,
+we&rsquo;ll want to keep track of where this point is. Otherwise we won&rsquo;t be able to
+&lsquo;seek&rsquo; to the appropriate positions. (An alternative would be to read the rest
+of the APP1 segment into a string and simply use array index notation to grab
+the values we need, but I&rsquo;m writing this with an eye to processing values as
+they are streamed so we can download only the data we need and no more.)</p>
+
+<p>Since we just read four bytes past the end of the &ldquo;Exif&rdquo; string, we&rsquo;ll need to
+back up by four bytes to get our start position.</p>
+
+<pre><code>&gt;&gt;&gt; f.tell()  
+34L  
+
+&gt;&gt;&gt; f.seek(30)  
+
+&gt;&gt;&gt; start = f.tell()  
+
+&gt;&gt;&gt; start  
+30L
+</code></pre>
+
+<p>Now we skip the four &ldquo;endianness&rdquo; bytes and get the four bytes that follow.
+This is the offset from the end of the &ldquo;Exif&rdquo; string at which the fields
+begin.</p>
+
+<pre><code>&gt;&gt;&gt; f.seek(start+4)  
+
+&gt;&gt;&gt; f.read(4)  
+'\x00\x00\x00\x08'
+</code></pre>
+
+<p>So&hellip;</p>
+
+<pre><code>&gt;&gt;&gt; f.seek(start+8)
+</code></pre>
+
+<p>&hellip;puts us at the beginning of the IFDs. Almost. Read the next two bytes to
+get the total number of IFDs the JPEG contains and <em>then</em> you will be up
+against the fields themselves.</p>
+
+<pre><code>&gt;&gt;&gt; f.read(2)  
+'\x00\x0b'
+</code></pre>
+
+<p>Our JPEG contains 11 IFDs.</p>
+
+<p>Alright, before we dive into getting values from these fields, it&rsquo;s important
+to note that, much like directories, IFDs can be recursive. That is to say,
+IFDs can contain more IFDs. That 11 we read up there is just the number of
+<em>top-level IFDs.</em> Within those IFDs, there may be <em>more</em> IFDs, just as a
+directory can contain more directories.</p>
+
+<p>Each IFD begins with a two-byte code indicating what kind of IFD it is. (IFDs
+that contain other IFDs start with the code &lsquo;\x87\x69&rsquo;, FYI.) So we read the
+next two bytes to find out what type of IFD comes first:</p>
+
+<pre><code>&gt;&gt;&gt; f.read(2)  
+ '\x01\x0f'
+</code></pre>
+
+<p>Reading from the handy-dandy <a href="http://exif.org/Exif2-2.PDF">EXIF spec PDF</a>, I
+see that this is the IFD field corresponding to &ldquo;Make.&rdquo; (I imagine this field
+holds the make of the camera that took the picture.)</p>
+
+<p>The next two bytes contain a code corresponding to the IFD&rsquo;s datatype:</p>
+
+<pre><code>&gt;&gt;&gt; f.read(2)  
+ '\x00\x02'
+</code></pre>
+
+<p>Okay, so looking at the spec I see that this corresponds to ASCII data. I&rsquo;ve
+reproduced the datatype table below for your convenience.</p>
+
+<p>1 = BYTE: An 8-bit unsigned integer.<br/>
+2 = ASCII: An 8-bit byte containing one 7-bit ASCII code. The final byte is
+terminated with NULL.<br/>
+3 = SHORT: A 16-bit (2-byte) unsigned integer.<br/>
+4 = LONG: A 32-bit (4-byte) unsigned integer.<br/>
+5 = RATIONAL: Two LONGs. The first LONG is the numerator and the second LONG
+expresses the denominator.<br/>
+7 = UNDEFINED: An 8-bit byte that can take any value depending on the field
+definition.<br/>
+9 = SLONG: A 32-bit (4-byte) signed integer (2&rsquo;s complement notation).<br/>
+10 = SRATIONAL: Two SLONGs. The first SLONG is the numerator and the second
+SLONG is the denominator.</p>
+
+<p>The next four bytes indicate how many values of that type comprise this IFD.</p>
+
+<pre><code>&gt;&gt;&gt; f.read(4)  
+'\x00\x00\x00\x06'
+</code></pre>
+
+<p>So it looks like the Make IFD is comprised of six one-byte values. Since this
+is greater than four bytes, the next four bytes will give us the offset where
+the values begin. If this IFD&rsquo;s values were four bytes or less, the values
+would be stored here. (Note that values less than four bytes are right-padded,
+so if the IFD&rsquo;s value was 0x0a 0x34 and two bytes long, it would be recorded
+as &lsquo;\x0a\x34\x00\x00&rsquo;.)</p>
+
+<pre><code>&gt;&gt;&gt; f.read(4)  
+'\x00\x00\x00\x92'
+</code></pre>
+
+<p>So we go to that offset and get the six bytes there&hellip;</p>
+
+<pre><code>&gt;&gt;&gt; f.seek(start+0x92)  
+
+&gt;&gt;&gt; f.read(6)  
+'Apple\x00'
+</code></pre>
+
+<p>This picture was taken with an Apple device!</p>
+
+<p>Okay, so obviously we know now how to, in general, find our EXIF fields and
+get their values. You can refer to the spec for more information if you need
+it.</p>
+
+<p>Now that we know how to grab EXIF data on the fly from an image, we can start
+building our webcrawler. But that&rsquo;ll have to wait until next time.</p>
+
+<p><em>(To be continued&hellip;)</em></p>
+    </body>
+</html>

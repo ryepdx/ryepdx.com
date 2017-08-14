@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Display an image from stdout [ubuntu]</h1>
+
+<p>To send bitcoin from my mobile phone to a plaintext address on my laptop, I
+like to use QR codes. At first I used websites like qrstuff.com to generate
+the QR codes, but leaving the command line just to generate and display an
+image felt like too much of a hassle to me. Then I started using the <code>feh</code> and
+<code>qrencode</code> utilities in Ubuntu&rsquo;s package repositories, but that involved
+creating an image file on my hard drive and then deleting it afterward, which
+felt messy. So I found a quick and easy way to generate and display a QR code
+from the command line without creating an intermediate file.</p>
+
+<p>The setup:</p>
+
+<pre><code>sudo apt-get install qrencode giblib-dev libimlib2 libcurl4-openssl-dev libpng-dev libX11-dev libXinerama-dev
+git clone https://github.com/derf/feh.git
+cd feh
+make
+sudo make install  
+</code></pre>
+
+<p>Note: Though there is a copy of <code>feh</code> already in the Ubuntu package
+repositories, it&rsquo;s an older version that does not support reading images from
+stdin. Thus it is necessary to compile our own copy from the git repository.</p>
+
+<p>To use the new <code>qrencode</code> and <code>feh</code> combo to, for example, display the QR code
+for Andreas Antonopoulos' Dorian Nakamoto assistance fund:</p>
+
+<pre><code>qrencode 1Dorian4RoXcnBv9hnQ4Y2C1an6NJ4UrjX -o - | feh -  
+</code></pre>
+
+<p>In the example above, the <code>-o</code> option on <code>qrencode</code> specifies where the
+generated image should be output, and passing <code>-</code> to that option specifies
+that it should be sent to stdout. Likewise, the <code>-</code> passed to <code>feh</code> specifies
+that <code>feh</code> should read the image from stdin.</p>
+
+<p>Finally, because I am extraordinarily lazy, I created a function in my
+~/.bashrc file to save my future self a few extra keystrokes:</p>
+
+<pre><code>function qrcode () {  
+    qrencode $@ -o - | feh -;  
+}  
+</code></pre>
+
+<p>Which turns the previous example into the slightly more succinct:</p>
+
+<pre><code>qrcode 1Dorian4RoXcnBv9hnQ4Y2C1an6NJ4UrjX
+</code></pre>
+
+<p>(Originally posted to <a href="https://coderwall.com/p/s6f_0w">Coderwall</a>)</p>
+    </body>
+</html>

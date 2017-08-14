@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Getting the Compaq nx6125 Broadcom Wireless card to work in Ubuntu 11.10</h1>
+
+<p>I remember trying to get Ubuntu to work on my Compaq nx6125 my freshman year
+of college. The first and biggest hurdle was getting the wireless card to
+work. Recently, after a few OS changes, I decided to go back to Ubuntu for
+that machine. Imagine my dismay when I discovered the documentation on the
+process hadn&rsquo;t changed much since my freshman year! Fortunately with a little
+digging I was able to find a much simpler process. If you&rsquo;re trying to get
+your Broadcom card to work in Ubuntu 11.10 (and possibly earlier versions, for
+all I know), simply run:</p>
+
+<p><code>sudo apt-get install firmware-b43-installer</code></p>
+
+<p>And that&rsquo;s it. Your wireless card should work.</p>
+
+<p><strong>Edit:</strong> If you&rsquo;re not using Ubuntu and want to get your Broadcom 43xx wireless card to work in your particular flavor of Linux, you can find more documentation on the subject on <a href="http://wireless.kernel.org/en/users/Drivers/b43">this particular page of the Linux Wireless website</a>. That&rsquo;s where I discovered that handy little bit of command-line wizardry.</p>
+    </body>
+</html>

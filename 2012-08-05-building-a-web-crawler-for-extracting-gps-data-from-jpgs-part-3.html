@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Building a web crawler for extracting GPS data from JPGs (part 3)</h1>
+
+<p>At this point things are going to pick up a bit. I wrote a Python class to
+handle reading GPS data from a JPEG using what I learned from walking through
+the file with the <a href="http://exif.org/Exif2-2.PDF">EXIF spec</a> and the <a href="http://fetidcascade.com/public/minimal_exif_reader.py">Fetid
+Cascade example</a> at
+hand. I&rsquo;ve posted the Python class on GitHub as part of the <a href="https://github.com/ryepdx%0A/gps-exif-webcrawler">gps-exif-
+webcrawler repository I started for this project</a>. I haven&rsquo;t had as much time to spend honing my Python
+skills as I used to have, so there are probably a few things about it that
+could stand some tightening up. (If you see anything, please drop me a line.
+I&rsquo;m always interested in improving the quality of my code.)</p>
+
+<p>Really though, you need to look at the class in that GitHub repository. I&rsquo;ll
+sum it up for you here, but I&rsquo;m not about to reproduce and explain it line-by-
+line. That would be tedious for both of us.</p>
+
+<p>The class was written with a bufferless stream reader in mind. It never
+requests data at a position the stream reader has already passed. The only
+small difficulty with that approach was the fact that all IFD tags are 10
+bytes long, with 4 bytes allocated for the tag&rsquo;s value. If the tag&rsquo;s value is
+longer than 4 bytes, it stores an offset pointing to the beginning of the
+tag&rsquo;s actual value in the 4 bytes it&rsquo;s allocated. The offset can be anywhere
+in the APP1 layer after the IFD tags have ended. I got past that by keeping a
+dictionary of tag metadata tuples keyed by offset and then sorting it by its
+keys. (Like I said, it was a <em>small</em> difficulty.)</p>
+
+<p>The only thing that bothers me about that approach is my use of tuples. I may
+change those to simple objects or dictionaries sometime today. I already had
+one incident in development where I got the values out of order while
+unpacking them and I imagine that will keep happening if this code changes at
+all in the future.</p>
+
+<p>There was also a problem with the fact that ASCII values are stored as null-
+terminated strings, with the null included in the tag&rsquo;s value count. Each
+character in the string is considered a single value. &ldquo;Foo&rdquo; would have a value
+count of 4, since there&rsquo;s a null at the end. While that is perfect for C-based
+EXIF readers, it meant that each of the strings I read in with Python looked
+[&ldquo;l&rdquo;, &ldquo;i&rdquo;, &ldquo;k&rdquo;, &ldquo;e&rdquo;, &ldquo; &rdquo;, &ldquo;t&rdquo;, &ldquo;h&rdquo;, &ldquo;i&rdquo;, &ldquo;s&rdquo;, &ldquo;.&rdquo;, &ldquo;\x00&rdquo;]</p>
+
+<p>So ASCII characters were a definite special case and had to be handled
+differently from everything else, which detracted from the code&rsquo;s generic-
+ness. But sometimes these things can&rsquo;t be avoided, I guess.</p>
+
+<p>There are also alot of &ldquo;magic values&rdquo; in the code. Realistically, I may or may
+not change that in the future. It&rsquo;s probably something I&rsquo;ll give a go at some
+point because I find it embarassing.</p>
+
+<p>The last thing that really bothers me is the length of the read_gps function.
+Minus the pydoc at the beginning, it&rsquo;s 132 lines long. Most of that is caused
+by the fact that I only wanted one function in the class modifying the stream.
+I figured it would make the code a lot more maintainable if there weren&rsquo;t five
+or six methods all changing the stream reader&rsquo;s position. I&rsquo;m not sure if I
+made the right trade-off or not.</p>
+
+<p>Despite these shortcomings, I did comment the code heavily, include pydoc-
+style summaries of each function, and include a simple unit test along with a
+JPEG I constructed for testing. Hopefully those will be enough to help you
+gain an even deeper understanding of EXIF data and help you along in your own
+projects!</p>
+
+<p>Next up: putting together a lightweight HTTP stream reader and constructing a
+simple webcrawler to grab JPEG URLs from some source, feed them into our
+ExifGPSReader, and save the resulting values.</p>
+
+<p><em>(To be continued&hellip;)</em></p>
+    </body>
+</html>

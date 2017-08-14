@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>OpenERP&#47;Odoo Review</h1>
+
+<h2>Background</h2>
+
+<p>This post is meant to be a helpful reference for developers who are either
+just beginning OpenERP development or who are considering beginning OpenERP
+development. It&rsquo;s also a fairly thorough catalog of my gripes with it.
+Hopefully this will help save someone somewhere some pain. I start with a
+summarized list of its pros and cons, followed by a more thorough explanation
+of each of the cons, and finish up with a list of tips that I personally would
+have found useful back when I was getting started.</p>
+
+<p>I&rsquo;ve been working with OpenERP v7 since December 2013. (Version 8 has since
+been released as &ldquo;Odoo.&rdquo;) In the past 9 months I&rsquo;ve gone from being a complete
+newbie to being familiar and competent with every aspect of this ERP
+framework. I have no basis for comparing it to other ERP solutions, as it&rsquo;s
+the first I&rsquo;ve ever worked with, but I can make a decent comparison between it
+and other Python-based projects.</p>
+
+<h2>Pros &amp; Cons</h2>
+
+<p>Pros:</p>
+
+<ul>
+<li>Python-based.</li>
+<li>Heavy emphasis on open source code.</li>
+<li>Modular design with a user-friendly &ldquo;app-store&rdquo; interface for non-developers.</li>
+</ul>
+
+
+<p>Cons:</p>
+
+<ul>
+<li>Not very idiomatic.</li>
+<li>XML gets used for <em>everything.</em></li>
+<li>The inheritance system is painful.</li>
+<li>The module system can be unreliable.</li>
+<li>The ORM doesn&rsquo;t follow the ActiveRecord pattern.</li>
+<li>Poor documentation.</li>
+</ul>
+
+
+<p>Before I launch into describing the pain points in more detail, I should first
+acknowledge that OpenERP began in 2005 as TinyERP. Had I myself begun an ERP
+system in 2005, I might not have done much better. The ecosystem was not the
+same back then, and a lot of my gripes likely are the result of the hindsight
+that the original developers didn&rsquo;t have. That said, there <em>are</em> a lot of
+things about OpenERP that tripped me up and that <em>still</em> trip me up from time
+to time. If you&rsquo;re just getting started with OpenERP, learn a little from my
+experience and read on. (And if you have the chance to try
+<a href="http://www.tryton.org/">Tryton</a> instead, give it some consideration. From the
+outside, it appears to be a bit more Pythonic than OpenERP.)</p>
+
+<h3>Not very idiomatic</h3>
+
+<p>The OpenERP developers seem to have built custom systems for <em>everything</em>. The
+client whose OpenERP system I was building on had advertised for a &ldquo;Python
+developer,&rdquo; but I felt like almost <em>none</em> of my Python knowledge got leveraged
+because almost <em>everything</em> had been reinvented in one way or another. The
+&ldquo;workflows&rdquo; system could have been done with
+<a href="https://pypi.python.org/pypi/blinker">blinker</a>, but instead they opted to
+implement a custom, hybrid Python/XML-based system. The templating system
+could have been implemented quite nicely with
+<a href="http://www.makotemplates.org/">Mako</a>, but instead they opted to implement yet
+<em>another</em> custom, hybrid Python/XML-based system. Speaking of which&hellip;</p>
+
+<h3>XML gets used for <em>everything</em></h3>
+
+<p>Which wouldn&rsquo;t be so bad if I didn&rsquo;t hate XML so much. But in my opinion, XML
+is a poor match for Python. As I understand it, XML is great for enforcing
+correctness and catching errors early. It&rsquo;s especially great when you&rsquo;re
+working with a static-typed language, from what I hear. And while OpenERP
+<em>does</em> catch template errors upon module installation, the error messages
+aren&rsquo;t especially intuitive. On top of this, a bad template with literally
+break the entire server. If your object models doesn&rsquo;t match their templates
+somehow, the server will lock everyone out and answer every login attempt with
+a stack trace.</p>
+
+<h3>The inheritance system is painful</h3>
+
+<p>Rather than use Python&rsquo;s package system, OpenERP uses a custom package system.
+&ldquo;Add-on paths&rdquo; are defined in the server&rsquo;s configuration file in order of
+priority, and modules within these add-on paths can import each other and
+override each other&rsquo;s code.</p>
+
+<p>It&rsquo;s a fairly flexible system, but it makes tracing code to find bugs more
+complicated than it has to be. In a normal Python project, figuring out what
+code is executing is as simple as looking at the imports at the top of the
+file and following them all the way up. With OpenERP, you still have normal
+Python imports to worry about, but now you also have OpenERP&rsquo;s system to worry
+about as well. In OpenERP&rsquo;s system, module imports are defined as strings in
+an array in <strong>openerp</strong>.py, with their order in the array determining in which
+order they get imported. This in turn determines which version of, say,
+&ldquo;res.company&rdquo; your module&rsquo;s &ldquo;res.company&rdquo; class inherits from. Because in
+OpenERP, class definition and inheritance are determined by magic class
+properties. If the <strong>name</strong> string is set, the class is being defined, which
+<em>can</em> lead to occlusion if the name is used in a previously imported module.
+If the <strong>inherit</strong> string is set, then the class inherits from a class
+belonging to the last-imported module whose <strong>inherit</strong> or <strong>name</strong> property
+matches.</p>
+
+<p>This system is, in my opinion, needlessly complicated and unidiomatic. I could
+be wrong, as I&rsquo;ve never written an ERP myself, but I suspect simply allowing
+developers to leverage their existing knowledge from, say,
+<a href="http://www.sqlalchemy.org/">SQLAlchemy</a> might have been a better design
+decision.</p>
+
+<h3>The module system can be unreliable</h3>
+
+<p>Upgrading the database after changing the codebase doesn&rsquo;t always work the way
+you would expect it to, for example. This has led to fun situations where, for
+example, a module works on my dev box but not on the test box because <em>once</em>
+the module had defined a column on one of its models, and that column wasn&rsquo;t
+removed from my dev database during an upgrade and some <em>other</em> package turns
+out to have relied on that column being in the database.</p>
+
+<p>Installing a new module can likewise be treacherous. I once spent hours trying
+to figure out why the new menu items I had added to a module weren&rsquo;t
+appearing, despite my settings in the security permissions CSV being correct,
+and despite the menu items showing up under the menu items tree in the user
+interface settings section of OpenERP. There were no errors whatsoever during
+installation, and there were no errors from the module during runtime. In the
+end, it turned out that one of the modules in its dependency chain was having
+trouble connecting to a remote server, which somehow led to the new menu items
+not being displayed. I understand that managing actors that are able to
+unilaterally alter each other&rsquo;s states is a very difficult problem. I
+understand that mutating shared, global state is going to happen within the
+context of an ERP. But I can&rsquo;t help but feel it could be done a whole lot
+better.</p>
+
+<h3>The ORM doesn&rsquo;t follow the ActiveRecord pattern</h3>
+
+<p>I know there&rsquo;s some dissent about ActiveRecord&rsquo;s usefulness, but it <em>is</em> a
+very common pattern at this point. OpenERP instead uses a very restricted,
+custom ORM that requires passing around cursor handles, user IDs, object IDs,
+and contexts. Because of how restricted the ORM is, very few of the
+efficiencies that can be realized by eschewing an ActiveRecord pattern are
+realized, and you get none of ActiveRecord&rsquo;s idiomatic syntax.</p>
+
+<h3>Poor documentation</h3>
+
+<p>Don&rsquo;t get me wrong: there&rsquo;s a lot of it out there, and the fact that there
+<em>is</em> documentation at all puts them ahead of a lot of projects. The problem is
+primarily that it&rsquo;s not organized well. There isn&rsquo;t a clean division between
+documentation that would primarily appeal to developers and business users.
+The style tends to veer toward verbose tutorials rather than plain API
+listings. There are holes here and there, where I&rsquo;ve been forced to just dig
+into the source code to figure out how things work. There are different
+versions of the documentation for different versions of OpenERP, each with
+unique holes, which leads to jumping between versions in order to fill in the
+holes and hoping that what held true for version 5.0 still holds true for
+version 7.0.</p>
+
+<p>And perhaps worst of all, there are the blank pages and dead links that
+started popping up everywhere after the developers rebranded OpenERP as Odoo.
+I use <a href="https://startpage.com/">StartPage</a> and <a href="https://ixquick.com/">IxQuick</a>
+to search for OpenERP documentation because they tend to work better than the
+search on the OpenERP/Odoo website. But they&rsquo;re not working quite as well as
+they used to, because oftentimes about half the results in the top five will
+be either to a thread on their old forum or to a page that appears to have
+literally just had its content removed. The latter case is particularly
+frustrating: the heading is still there, the page is still in the table of
+contents for that version of OpenERP&rsquo;s documentation, but there is no longer
+any content.</p>
+
+<h2>Tips</h2>
+
+<p>If this hasn&rsquo;t scared you away from OpenERP, here are a couple pointers that I
+wish someone had given me when I first got started:</p>
+
+<ul>
+<li>Don&rsquo;t ignore warnings or errors, no matter which module they&rsquo;re coming from. It&rsquo;s usually safe to assume that every module in OpenERP is reliant on every other module. One module that isn&rsquo;t functioning <em>exactly perfectly</em> can very well cause mysterious errors in a seemingly unrelated one.</li>
+<li>Backup your database before you start uninstalling and re-installing modules. You will want it when the database migrations fail and your data ends up in a hopelessly impossible state, or when everything breaks because you&rsquo;ve violated another module&rsquo;s assumptions about the database model you&rsquo;ve been changing.</li>
+<li>Security CSVs. Learn how to use them. Don&rsquo;t forget about them. They will likely be the reason none of your new menu items and models are showing up for non-admin users when you&rsquo;re first getting started.</li>
+</ul>
+
+
+<p>Best of luck in your OpenERP/Odoo adventures! Let me know your thoughts and
+opinions in the comments, and feel free to ask questions. I&rsquo;ll do my best to
+answer them.</p>
+    </body>
+</html>

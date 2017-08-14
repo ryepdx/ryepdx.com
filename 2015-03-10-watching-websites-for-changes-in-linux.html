@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Watching Websites for Changes in Linux</h1>
+
+<p>(Some of this may also apply to OS X, since it&rsquo;s <a href="http://en.wikipedia.org/wiki/Unix-like">Unix-
+like</a>.)</p>
+
+<p><em><strong>Edit:</strong> The general idea does translate well to OS X, but there are a few
+key differences which <a href="http://maymay.net">Maymay</a> has noted <a href="http://ryepdx.com/2015/03/watching-websites-for-changes-in-%0Alinux/#comment-5760">in the
+comments</a>.</em></p>
+
+<p>I was digging around in my home directory today and came across a script I&rsquo;d
+written last May during one of Github&rsquo;s outages to alert me when it came back
+up. Yesterday I turned out a one-liner to watch a website and alert me when it
+changed, so I was struck by how my problem-solving approach had changed in the
+intervening months as I continued to learn more about the utilities available
+on the Unix command line.</p>
+
+<p>First, the script from last May:</p>
+
+<pre><code>#!/bin/bash
+
+headers=`curl -G https://github.com/ -I -s | grep HTTP`
+
+if [[ $headers == *200* ]]  
+then  
+ `paplay ~/Downloads/echo_ping.ogg`  
+fi
+</code></pre>
+
+<p>Essentially this script just grabs the response headers from
+https://github.com/ and looks for the HTTP code. Then it looks for the string
+&ldquo;200&rdquo; anywhere within the HTTP code string. If a &ldquo;200&rdquo; code is returned, it
+uses paplay to play a sound file I&rsquo;d downloaded from the command line.</p>
+
+<p>A few things stick out to me here:</p>
+
+<ol>
+<li>The &ldquo;-G&rdquo; argument to curl is unnecessary, since I&rsquo;m not passing any data in my request and curl defaults to GET requests anyway. I could have also omitted the &ldquo;-s&rdquo; argument, since we&rsquo;re immediately grepping for the &ldquo;HTTP&rdquo; line.</li>
+<li>I could have used &ldquo;aplay&rdquo; or &ldquo;pacmd&rdquo; instead of &ldquo;paplay,&rdquo; though the only difference between them is that &ldquo;aplay&rdquo; is more likely to be on a system by default, as I understand it. Regardless, I also went out and downloaded a sound file to play, which took some time. I could have instead used something like &ldquo;espeak&rdquo; to make my computer alert me with a robotic voice, which might have saved me the trouble of looking for a unique alert sound for Github&rsquo;s return.</li>
+<li>The script doesn&rsquo;t handle periodic checking. In all likelihood, I just popped the script into my <a href="https://en.wikipedia.org/wiki/Cron">crontab</a>. That&rsquo;s a bit of extra hassle in itself.</li>
+<li>Once the sound has played, that&rsquo;s it. If I step away from my computer and Github comes back while I was away, I&rsquo;ll have missed the alert sound. Which means I was still checking Github manually every time I came back after stepping away from the computer. So inefficient!</li>
+</ol>
+
+
+<p>If I were to rewrite this today, it&rsquo;d probably look like this:</p>
+
+<pre><code>watch -n 300 -g curl -s -I https://github.com/ &amp;&amp; espeak "Github is up." &amp;&amp; xmessage "Github is up."
+</code></pre>
+
+<p>Here I&rsquo;m telling &ldquo;watch&rdquo; to check the output of &ldquo;curl -s -I
+https://github.com/&rdquo; every 300 seconds (-n 300) and then exit when it changes
+(-g). Upon exit, &ldquo;espeak&rdquo; will make my computer tell me verbally that Github
+is back, and then once <em>that&rsquo;s</em> done, &ldquo;xmessage&rdquo; will pop up a message box
+saying the same.</p>
+
+<p>The simplicity is great, and it&rsquo;s always nice to see evidence of one&rsquo;s growing
+proficiency with a tool, but &ldquo;xmessage&rdquo; really makes this vastly superior to
+my old script. The message box it produces is ugly as anything, but it&rsquo;s much
+better-suited to the purpose than &ldquo;notify-send&rdquo; is. Sometimes you want a
+notice to hang around until acknowledged, and &ldquo;xmessage&rdquo; fits the bill nicely.</p>
+    </body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Building Opa in 32-bit Ubuntu 11.10</h1>
+
+<p>Heard of <a href="http://opalang.org/">Opa</a>? It&rsquo;s a full web app stack by MLstate. It
+focuses on allowing developers to create highly scalable, highly interactive,
+rich web applications as easily as possible.</p>
+
+<p>Here&rsquo;s &ldquo;Hello World&rdquo; in Opa:<br/>
+<code>server = Server.one_page_server("Hello", ( -&gt; &lt;&gt;Hello web))</code></p>
+
+<p>And here&rsquo;s a chat room in 20 ELOC:<br/>
+`import stdlib.themes.bootstrap</p>
+
+<p>type message = {author: string /<strong>The name of the author (arbitrary string)*/<br/>
+; text: string /</strong>Content entered by the user*/}</p>
+
+<p>@publish room = Network.cloud(&ldquo;room&rdquo;): Network.network(message)</p>
+
+<p>user_update(x: message) =<br/>
+line =</p>
+
+<p>{x.author}:</p>
+
+<p>{x.text}</p>
+
+<p>do Dom.transform([#conversation +Dom.scroll_to_bottom(#conversation)</p>
+
+<p>broadcast(author) =<br/>
+text = Dom.get_value(#entry)<br/>
+message = {~author ~text}<br/>
+do Network.broadcast(message, room)<br/>
+Dom.clear_value(#entry)</p>
+
+<p>start() =<br/>
+author = Random.string(8)</p>
+
+<p>Network.add_callback(user_update, room)}&gt;</p>
+
+<p>broadcast(author)}/&gt;</p>
+
+<p>broadcast(author)}&gt;Post</p>
+
+<p>server = Server.one_page_bundle(&ldquo;Chat&rdquo;,<br/>
+[@static_resource_directory(&ldquo;resources&rdquo;)],<br/>
+[&ldquo;resources/css.css&rdquo;], start)<br/>
+`</p>
+
+<p>In Opa, the Javascript, HTML, and database models are all generated from the
+same code.</p>
+
+<p>I was intrigued, so I decided to give it a spin. Unfortunately my laptop was
+running Ubuntu 11.04 on a 32-bit processor. At the time of this writing, the
+only binaries available are for 64-bit Linux or OS X. But I decided to try
+building from source anyway. Haven&rsquo;t quite got it figured out yet, but I&rsquo;ve
+made some progress! If anyone can help me out, that&rsquo;d be great.</p>
+
+<p>My steps so far:</p>
+
+<ol>
+<li>Update Ubuntu to 11.10 if you&rsquo;re running an earlier version. Opa requires OCaml 3.12, but the latest version of OCaml in the 11.04 repositories is only 3.11.</li>
+<li><p>Install dependencies:<br/>
+<code>sudo apt-get install ocaml libssl-ocaml-dev libcryptokit-ocaml-dev libzip-
+ocaml-dev libocamlgraph-ocaml-dev ocaml-ulex camlp4 camlp4-extra</code></p></li>
+<li><p>Download and decompress the Opa source package from <a href="https://github.com/MLstate/opalang">Github</a>.</p></li>
+</ol>
+
+
+<p><code>wget https://github.com/MLstate/opalang/tarball/master  
+tar -xzf master</code></p>
+
+<ol>
+<li>Configure and build.</li>
+</ol>
+
+
+<p><code>cd MLstate-opalang*  
+./configure -ocamldir /usr/lib/ocaml  
+make</code></p>
+
+<p>And that&rsquo;s as far as I&rsquo;ve gotten so far. At that point I get the following
+error:<br/>
+`<br/>
+File &ldquo;buildinfos/buildInfos.ml&rdquo;, line 14, characters 0-3:<br/>
+Error: Syntax error<br/>
+Command exited with code 2.<br/>
+Failure:<br/>
+No cache, no trx exe: sorry, cannot build libnet/http/request.ml from
+libnet/http/request.trx.<br/>
+You may want to re-run with TRX_OVERRIDE set.<br/>
+Compilation unsuccessful after building 521 targets (512 cached) in 00:00:04.<br/>
+make: *** [all] Error 2</p>
+
+<p>`</p>
+
+<p>I intend to do some digging about to solve this issue. I&rsquo;ll keep this post
+updated, so keep checking back.</p>
+    </body>
+</html>

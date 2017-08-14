@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Setting up Python 2.7 and PyPI (pip) on an iPod Touch</h1>
+
+<p>I just wanted to harvest tweets over a period of about a month or two, but I
+didn&rsquo;t want to pay for all that processor time on an EC2 instance. I tried
+running my Python script on my shared hosting account, but the admins kept
+killing the &lsquo;screen&rsquo; containing it. I would have used my desktop computer, but
+I can&rsquo;t sleep with it on. And my laptop couldn&rsquo;t provide the uptime I needed.</p>
+
+<p>First thought: <a href="http://www.raspberrypi.org/">Raspberry Pi</a>. But getting one
+looked like a rather lengthy process, and I didn&rsquo;t want to have to wait weeks
+or months to proceed with my project.</p>
+
+<p>I happened to have a 2nd generation iPod Touch running iOS 4.2.1 that was just
+collecting dust. After trying and failing to get Linux on it, after wrangling
+with Darwin and reading walkthroughs, I&rsquo;m ready to share the steps that
+eventually got me there. Hopefully they&rsquo;ll help you.</p>
+
+<p><strong>How I did it (minus the dead ends and false starts)</strong></p>
+
+<ol>
+<li>Downloaded the latest version of <a href="http://www.redsn0w.us/">Redsn0w</a>.</li>
+<li>Downloaded <a href="http://appldnld.apple.com/iPhone4/061-9855.20101122.Lrft6/iPod2,1_4.2.1_8C148_Restore.ipsw">the iPod Touch 2G 4.2.1 firmware</a>. (Thanks to <a href="http://www.kittyra1n.com/">k1ttyrain</a> for the file.)</li>
+<li>Ran Redsn0w and went through the jailbreak process.</li>
+<li>Used Cydia to install OpenSSH, wget, BerkeleyDB, and SQLite 3. (I also installed screen so I could run my script and leave it running after ending my SSH session, but you don&rsquo;t have to.)</li>
+<li><a href="http://guides.macrumors.com/SSH_into_your_iPod_%2528Windows%2529">SSHed into my iPod</a>.</li>
+<li>Changed my root password with passwd.</li>
+<li><code>wget http://yangapp.googlecode.com/files/python_2.7.2-5_iphoneos-arm.deb</code></li>
+<li><code>dpkg -i python_2.7.2-5_iphoneos-arm.deb</code></li>
+<li><code>wget --no-check-certificate https://github.com/pypa/virtualenv/raw/develop/virtualenv.py</code></li>
+<li><code>python virtualenv.py env</code></li>
+</ol>
+
+
+<p>At that point I used the copy of pip in the env/bin directory that virtualenv
+created to install the modules I needed and used the copy of python in the
+same env/bin directory to run my script in a screen I detached. Now I&rsquo;ve got a
+quiet little iPod Touch plugged into the wall, slurping down tweets and saving
+them into date-stamped files!</p>
+
+<p><strong>Edit:</strong> Added mention of SQLite 3 and BerkeleyDB in step four.</p>
+    </body>
+</html>

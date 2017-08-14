@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>De-obfuscating a botnet infection</h1>
+
+<p>Last night I was working on a PHP website for a client when I stumbled upon
+this line of code whitespaced way off the screen on the first line of a few of
+our files:
+<a href="https://gist.github.com/ryepdx/5016290" title="https://gist.github.com/ryepdx/5016290">https://gist.github.com/ryepdx/5016290</a></p>
+
+<p>That looked pretty suspicious to me, so I googled &ldquo;$GLOBALS[&lsquo;QQOO&rsquo;]&rdquo; and the
+only result that came up was this Pastebin:
+<a href="http://pastebin.com/71nwAsj6" title="http://pastebin.com/71nwAsj6">http://pastebin.com/71nwAsj6</a></p>
+
+<p>Definitely didn&rsquo;t like the look of that, so I grepped the rest of our files
+and found the same code embedded in the same way on four more files. I removed
+it from all of them, re-uploaded the cleaned files, and got to work figuring
+out what this code was doing.</p>
+
+<p>I copied the code, commented out the call to &ldquo;$Ill11I1lI&rdquo; at the end of
+&ldquo;function Q0QQOOQO,&rdquo; and echoed out $Ill11I1lI. This gave me &ldquo;preg_replace.&rdquo; A
+little research revealed that the &ldquo;/e&rdquo; flag in preg_replace makes preg_replace
+<em>automatically eval the result.</em> (This seems like a spectacularly bad design
+decision to me, but that&rsquo;s just my opinion.)</p>
+
+<p>So I echoed &ldquo;Q0QQOOQO(710, 2563)&rdquo; to see what code they were trying to make
+preg_replace run. I got back:
+<a href="https://gist.github.com/ryepdx/5016310" title="https://gist.github.com/ryepdx/5016310">https://gist.github.com/ryepdx/5016310</a></p>
+
+<p>More preg_replace eval'ing, so I commented out the call to &ldquo;$Q00Q0QOQQ&rdquo; and
+echoed IlI11lll(721, 2563). I got back a pretty sizable string of code, which
+I formatted and then took the liberty of renaming what was pretty obviously a
+&ldquo;get string&rdquo; function to &ldquo;get_string.&rdquo; That gave me this code:
+<a href="https://gist.github.com/ryepdx/5015935" title="https://gist.github.com/ryepdx/5015935">https://gist.github.com/ryepdx/5015935</a></p>
+
+<p>I then did a search for all calls to &ldquo;get_string&rdquo; and isolated them to one
+line each, then used a little regex-fu to generate this PHP file:
+<a href="https://gist.github.com/ryepdx/5015963" title="https://gist.github.com/ryepdx/5015963">https://gist.github.com/ryepdx/5015963</a></p>
+
+<p>And then I used the output from that PHP script to create a Python script (I
+realize I could have just used PHP, but my Python-fu is stronger) to find and
+replace all the calls to &ldquo;get_string&rdquo; with their actual returned values:
+<a href="https://gist.github.com/ryepdx/5015978" title="https://gist.github.com/ryepdx/5015978">https://gist.github.com/ryepdx/5015978</a></p>
+
+<p>That got me a file I could actually read somewhat. I started working my way
+down the file, renaming variables like &ldquo;$QO0OQO&rdquo; and &ldquo;$IIl11I&rdquo; to things like
+&ldquo;$curl&rdquo; and &ldquo;$curl_init.&rdquo; After working at it like a crossword puzzle (&ldquo;What&rsquo;s
+a name for the third parameter in fsockopen?&rdquo;) for around half an hour, I was
+finally treated to its final, naked, legible form (which I then filled with
+helpful comments):
+<a href="https://gist.github.com/ryepdx/5016252" title="https://gist.github.com/ryepdx/5016252">https://gist.github.com/ryepdx/5016252</a></p>
+
+<p>Basically this code allows the botnet owners to execute arbitrary PHP code on
+the infected server. Not a very friendly piece of code!</p>
+
+<p><strong>TL;DR:</strong> Found obfuscated botnet code on a client&rsquo;s server and spent about an hour and a half making it readable: <a href="https://gist.github.com/ryepdx/5016252" title="https://gist.github.com/ryepdx/5016252">https://gist.github.com/ryepdx/5016252</a></p>
+    </body>
+</html>

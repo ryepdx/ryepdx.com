@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Magic Parser vs. SimpleXML</h1>
+
+<p>Recently a client hired me to create a PHP script to populate a MySQL database
+based on data in a series of XML files. A simple enough task, but the client
+had recently spent $80 on a product called Magic Parser and so wanted me to
+use the tool in my code. While I am sure the expenditure would have been worth
+it had the task been different, I was not at all impressed with Magic Parser&rsquo;s
+performance with this particular task.</p>
+
+<p>When I&rsquo;m parsing through XML code I really want a tree-like structure. Magic
+Parser returns everything in a flat array, with tag names separated by
+slashes. For example:<br/>
+`</p>
+
+<p> A</p>
+
+<p>`</p>
+
+<p>would return<br/>
+<code>  
+Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")  
+</code></p>
+
+<p>This causes problems if there is more than one tag with the same name. For
+example:<br/>
+`</p>
+
+<p> A<br/>
+ B</p>
+
+<p>`</p>
+
+<p>They work around this by sending three arrays to the callback function:<br/>
+<code>  
+Array([BAR]=&gt;"A")  
+Array([BAR]=&gt;"B")  
+Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")  
+</code></p>
+
+<p>This actually makes it harder to process the XML than if I were using
+SimpleXML, as SimpleXML would return:<br/>
+<code>  
+SimpleXML Object([bar]=&gt;Array([0]=&gt;"A", [1]=&gt;"B"))  
+</code></p>
+
+<p>In SimpleXML I would just have to cycle through the array attached to the
+&ldquo;bar&rdquo; property of the SimpleXML object. With MagicParser I have to figure out
+if it&rsquo;s sending me a &ldquo;BAR&rdquo; array or a &ldquo;FOO/BAR&rdquo; array.</p>
+
+<p>The moral of the story is that if you just want to parse XML data, give Magic
+Parser a wide berth and stick with something like SimpleXML. It does the job
+better, it&rsquo;s free, and it&rsquo;s part of PHP&rsquo;s default installation.</p>
+    </body>
+</html>

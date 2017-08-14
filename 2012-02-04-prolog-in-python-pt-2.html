@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Prolog in Python (pt. 2)</h1>
+
+<p><strong>Note:</strong> I&rsquo;ve uploaded a basic barebones project based on this series to a <a href="https://github.com/ryepdx/prolog-mysql-appraise">GitHub repository</a> for your convenience.</p>
+
+<p><a href="http://ryepdx.com/2011/09/prolog-in-python-pt-1/" title="Prolog in Python
+(pt. 1)">Last time</a> we figured out how to use SWI-Prolog routines in Python. Now we
+will learn how to connect SWI-Prolog to MySQL and use it to extend Prolog&rsquo;s
+built-in database.</p>
+
+<h3>Connecting and Disconnecting</h3>
+
+<p>The <em><a href="http://www.swi-%0Aprolog.org/pldoc/doc_for?object=odbc_connect/3">odbc_connect</a></em> predicate will connect you to
+your MySQL database. Here I encapsulate it in another predicate for ease of
+use throughout the rest of my code.</p>
+
+<p><code>connect :- odbc_connect('mysql._your_database_name_', _,  
+[ user(_your_username_),  
+alias(_database_symbol_),  
+password(_your_password_),  
+open(once)  
+]).  
+</code></p>
+
+<p>Obviously you will need to fill in your own database&rsquo;s name and your own
+username and password. Also, replace <em>database_symbol</em> with the name of the
+global symbol you want to bind your database connection to.</p>
+
+<p>The following predicate will disconnect you from your database:</p>
+
+<p><code>% Disconnects from the database.  
+disconnect :- odbc_disconnect(_database_symbol_).  
+</code></p>
+
+<h3>Running Queries</h3>
+
+<p>Now that we can open and close a connection to the database, we can start
+passing raw queries to it and getting back values. Here&rsquo;s an example of
+pulling data from a row lifted directly from the GitHub project mentioned
+above. Assume that we used <em>db</em> for our <em>database_symbol</em>.</p>
+
+<p><code>% Extracts the values from a row in the Value table.  
+parse_value(Row, Thing1, Price, Thing2, Inferred) :- row(Thing1, Price,
+Thing2, Inferred) = Row.</code></p>
+
+<p><code>% Finds the value of Thing1 in terms of Thing2.  
+generic_value(Thing1, Price, Thing2, Inferred) :-  
+connect,  
+odbc_prepare(db, 'select * from value where ((thing1 = ? and thing2 = ?) or
+(thing2 = ? and thing1 = ?)) and inferred = ?', [default, default, default,
+default, integer], Statement, [fetch(fetch), types([atom, float, atom,
+integer])]),  
+odbc_execute(Statement, [Thing1, Thing2, Thing2, Thing1, Inferred]),  
+odbc_fetch(Statement, Row, next),  
+parse_value(Row, _, Price, _, _),  
+disconnect.</code></p>
+
+<p>The first predicate, <em>parse_value</em>, does a little bit of pattern matching to
+split the returned row out into its constituent columns.</p>
+
+<p>The second predicate, <em>generic_value</em>, does a few things:</p>
+
+<p>1. It opens the database connection.</p>
+
+<p>2. It creates a prepared query with <em><a href="http://www.swi-%0Aprolog.org/pldoc/man?predicate=odbc_prepare%2f5">odbc_prepare</a></em>. There are a lot of
+parameters there, so I&rsquo;ll explain them a bit.</p>
+
+<ul>
+<li>First is global symbol we defined in our connect predicate. In this case I used db, though you can use whatever you replaced database_symbol with.</li>
+<li>Second is the actual SQL query with ? marking where we want our query parameters to go.</li>
+<li>Third is a list of types for the values we&rsquo;ll be binding to our query parameters.</li>
+<li>Fourth is the symbol we want to bind the prepared statement to. In this case I bound it to Statement.</li>
+<li>Fifth is an optional parameter containing a list of options for our query. <em>fetch</em> describes how I want the results to be returned: by default Prolog will grab all the rows returned. By passing in <em>fetch(fetch)</em>, I specify that I want only the first row to be returned. <em>types</em> contains a list of types that I want the returned columns to be automatically coerced to. By default Prolog will try to guess.</li>
+</ul>
+
+
+<p>3. It executes the prepared statement with <em><a href="http://www.swi-%0Aprolog.org/pldoc/man?predicate=odbc_execute%2f2">odbc_execute</a></em>, which takes a prepared
+statement and a list of values.</p>
+
+<p>4. It fetches the returned row with <em><a href="http://www.swi-%0Aprolog.org/pldoc/man?predicate=odbc_fetch%2f3">odbc_fetch</a></em>, which  takes a prepared
+statement, binds the returned row to a specified symbol (in this case I used
+<em>Row</em>), and takes a parameter specifying which row should be returned. In this
+case I specified that the &ldquo;next&rdquo; row should be returned.</p>
+
+<p>5. It binds the second column returned to <em>Price</em>, discarding the values in
+the other columns.</p>
+
+<p>6. It closes the database connection.</p>
+
+<p>Simple, no? Inserting and deleting data are similarly easy. I&rsquo;ll let you
+figure out these examples for yourself. If you have questions, feel free to
+leave a comment.</p>
+
+<p><code>% Sets the value of Thing1 in terms of Thing2.  
+% If inferred is not specified, defaults to true.  
+set_value(Thing1, Price, Thing2) :- set_value(Thing1, Price, Thing2, 1).  
+set_value(Thing1, RPrice, Thing2, Inferred) :-  
+Price is float(RPrice),  
+connect,  
+odbc_prepare(db, 'insert into value(thing1, price, thing2, inferred) values
+(?, ?, ?, ?)', [default, float &gt; decimal, default, integer], Statement),  
+odbc_execute(Statement, [Thing1, Price, Thing2, Inferred]),  
+disconnect.</code></p>
+
+<p><code>% Clears all inferred values from the database.  
+clear_inferrences :-  
+connect,  
+odbc_query(db, 'delete from value where inferred'),  
+disconnect.</code></p>
+
+<p><strong>Another note:</strong> Did you notice that sneaky <em>float > decimal</em> action up there? All that means is that the decimal value that Prolog will provide when the statement is executed corresponds to a float value in the MySQL table.</p>
+    </body>
+</html>

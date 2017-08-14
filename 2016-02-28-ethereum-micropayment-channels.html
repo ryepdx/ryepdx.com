@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Ethereum Micropayment Channels</h1>
+
+<p><em>This is a repost of an answer I gave on the Ethereum StackExchange. It
+describes a simple micropayment channel implementation I&rsquo;ve had bumping around
+in my head for the past week or so. I spent enough time writing it that I
+figured I&rsquo;d share it here as well.</em></p>
+
+<p><strong>Q: What are payment channels? Can they be implemented on Ethereum?</strong></p>
+
+<p>Absolutely. In fact, there&rsquo;s a project currently underway to implement an
+Ethereum Lightning Network, which uses micropayment transaction channels,
+called <a href="https://github.com/brainbot-com/raiden">Raiden</a>.</p>
+
+<p>For those who aren&rsquo;t already familiar with microtransaction channels, here&rsquo;s a
+primer. Feel free to skip the next two paragraphs if you&rsquo;re already familiar
+with the mechanism:</p>
+
+<p>In the Bitcoin version, participants lock funds in a multisig &ldquo;smart contract&rdquo;
+(i.e., one or more Bitcoin transactions) and partially sign a pair of
+commitment transactions which are spent from by four timelocked multisig
+&ldquo;commitment&rdquo; transactions. The spending transactions are set up such that
+either party can send what&rsquo;s owed the other party immediately at the cost of
+having to wait some number of blocks for their funds to be released. Each time
+the state of the channel is updated, previous states are invalidated by
+participants exchanging the keys their commitment transactions spend to, thus
+allowing the counterparty to steal all the funds in the multisig only if a
+participant broadcasts an old commitment transaction.</p>
+
+<p>If you want to understand all of that better, then read the first 29 pages of
+<a href="http://lightning.network/lightning-network-%0Apaper.pdf">the Lightning Network paper</a>. It&rsquo;s not important that you do in the context of this answer
+though. Suffice it to say, a microtransaction channel requires two parties to
+be able to update the channel&rsquo;s state off-chain, settle to the blockchain at
+any time, and take all the funds in the channel if the counterparty attempts
+to write an old channel state to the blockchain.</p>
+
+<p>In Ethereum, this can be simplified quite a bit. One implementation might
+consist of a smart contract which accepts and verifies a signed transaction
+command and a nonce. (We can&rsquo;t just use native transactions for signing and
+verification like Bitcoin does because Ethereum transactions use an
+incrementing nonce to prevent playback attacks.)</p>
+
+<p>Participants would then send ether to the smart contract after creating and
+exchanging signed spending transaction commands similar to the ones in the
+Bitcoin channels. In particular, Alice would sign a transaction command
+sending funds immediately to Bob and locking funds for herself to be released
+after some amount of time, and vice versa. The smart contract would contain
+the logic that any funds timelocked for the counterparty can be claimed by
+producing a transaction command signed by the counterparty with a higher nonce
+than the one which the counterparty broadcast.</p>
+
+<p>This requires quite a bit less signing and private key juggling than the
+Bitcoin implementation does, and is (IMO) quite a bit easier to understand as
+well. How exactly <a href="https://github.com/brainbot-com/raiden">Raiden</a> does it,
+I&rsquo;m not sure. I haven&rsquo;t gotten around to reading their code just yet. Their
+implementation is likely more complex, though, as it looks like they&rsquo;re trying
+to really extend the capabilities of the Lightning Network to support more
+than just currency transfer. For something as simple as currency transfer via
+bidirectional transaction channels, though, the scheme described here should
+certainly work.</p>
+    </body>
+</html>

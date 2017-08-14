@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+    <head>
+        <title>ryepdx.com</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+            body{margin:40px;max-width:650px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;background:#EEEEEE}
+            h1,h2,h3{line-height:1.2}
+            code{white-space:pre;font-size:0.9em}
+        </style>
+    </head>
+    <body>
+<h1>Prolog in Python (pt. 1)</h1>
+
+<p>I&rsquo;ve recently become enamored with the idea of querying a Prolog program with
+a MySQL database backend from a Python script. Specifically I want to create a
+Django web app that will allow a user to ask for the price of a thing in terms
+of anything else. Prolog seems like an excellent choice for the value-finding
+engine as value-finding in this case will mostly consist of finding a path of
+trade between two things. For example, in order to find the price of apples in
+terms of bananas, the value finding engine will first query its database to
+see if it already knows that off-hand. If it doesn&rsquo;t, it then has to see what
+it does know about the price of apples and then see if anything it can trade
+apples for can then be traded for bananas. It has to keep branching out until
+it finally hits bananas.</p>
+
+<p>I was able to complete a proof-of-concept value engine <a href="https://github.com/ryepdx/prolog-appraise/blob/master/appraise.pl">with just 9 lines of
+Prolog</a>,
+minus comments.</p>
+
+<p>The next step, of course, was to find a way to allow Python to call Prolog
+predicates. As I was using SWI-Prolog, I downloaded
+<a href="https://code.google.com/p/pyswip/">PySWIP</a>.</p>
+
+<p><a href="https://code.google.com/p/pyswip/">PySWIP</a> is a simple gateway between the
+SWI-Prolog interpreter and Python. The project was briefly orphaned for a
+while and the project&rsquo;s author is actively looking for another developer to
+take the reins, so I can&rsquo;t recommend this as an enterprise-grade solution.
+However, it seemed that for my purposes it would work just fine.</p>
+
+<p>PySWIP did not work right out of the box. I had SWI-Prolog 5.10.4 installed on
+my machine and the latest version that PySWIP supported at the time was
+5.6.34. Running</p>
+
+<p><code>from pyswip import Prolog</code></p>
+
+<p>resulted in</p>
+
+<p><code>libpl (shared) not found. Possible reasons:  
+1) SWI-Prolog not installed as a shared library. Install SWI-Prolog (5.6.34
+works just fine)</code></p>
+
+<p>Fortunately the fix was easy. After some Googling I surmised that the issue
+stemmed from the fact that libpl.dll had been renamed to swipl.dll in the
+versions after 5.6.34. Navigating to C:\Program Files\pl\bin and making a copy
+of swipl.dll named libpl.dll did the trick.</p>
+
+<p>Here&rsquo;s a little example of using an external Prolog program in Python.</p>
+
+<p><code>from pyswip import Prolog</code></p>
+
+<p><code>prolog = Prolog()</code></p>
+
+<p><code>prolog.consult("appraise.pl")</code></p>
+
+<p><code># A couple preliminary assertions.  
+prolog.assertz("value(banana, 1 rdiv 4, bitcoin)")  
+prolog.assertz("value(bitcoin, 1 rdiv 30, namecoin)")  
+prolog.assertz("value(apple, 3 rdiv 4, banana)")  
+prolog.assertz("value(orange, 1 rdiv 5, apple)")</code></p>
+
+<p><code># Now, how much is an orange worth in bitcoins?  
+result = prolog.query("appraise_float(orange, Price, bitcoin)").next()  
+print "An orange is worth %s bitcoins." % result["Price"]</code></p>
+
+<p><code># And how much is a bitcoin worth in apples?  
+result = prolog.query("appraise_float(bitcoin, Price, apple)").next()  
+print "A bitcoin is worth %s apples." % result["Price"]</code></p>
+
+<p>Running this results in<br/>
+<code>  
+An orange is worth 0.0375 bitcoins.  
+A bitcoin is worth 5.33333333333 apples.  
+</code></p>
+
+<p>Next up: <a href="http://ryepdx.com/2012/02/prolog-in-%0Apython-pt-2/">SWI-Prolog/MySQL integration</a>.</p>
+    </body>
+</html>
