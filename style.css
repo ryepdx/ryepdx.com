@@ -3,3 +3,7 @@ h1,h2,h3{line-height:1.2}
 code{white-space:pre;font-size:0.9em}
 a:visited{color:maroon}
 a:link{color:crimson}
+span.date{white-space:nowrap;margin-right:0.5em}
+ul.toc{padding-left:0.5em}
+ul.toc li{display: table;}
+ul.toc li a{display: table-cell;}
