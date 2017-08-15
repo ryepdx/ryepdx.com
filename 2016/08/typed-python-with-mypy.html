@@ -13,49 +13,37 @@
     <body>
 <h1>Typed Python with MyPy</h1>
 
-<p><a href="http://www.coindesk.com/understanding-dao-hack-%0Ajournalists/">The &ldquo;The DAO&rdquo; hack</a>[1. And I will forever use scare quotes and awkward word
-repetition in order to dissuade others from making the same stupid naming
-decisions.] threw me down a &ldquo;how safely can I write code&rdquo; rabbit hole[2.
-<a href="https://coq.inria.fr/">Coq</a> and <a href="http://www.idris-lang.org">Idris</a> play
-starring roles.], which has led to me picking up typed Python for <a href="https://cpay.us">my current
-project</a>[3. Which was destined to be Python based at any
-rate, as I hadn&rsquo;t worked with it in a while and missed it somewhat. And I&rsquo;m
-pretty sure Coq is not <a href="http://www.arewewebyet.org/">&ldquo;web yet.&rdquo;</a> Not in my
-paws, anyway.].</p>
+<p><a href="http://www.coindesk.com/understanding-dao-hack-%0Ajournalists/">The &ldquo;The DAO&rdquo; hack</a> threw me down a &ldquo;how safely can I write code&rdquo; rabbit hole, which
+has led to me picking up typed Python for <a href="https://cpay.us">my current project</a>.</p>
 
 <p>Support for &ldquo;type hints&rdquo; was introduced in <a href="https://www.python.org/dev/peps/pep-0484/">PEP
 484</a> and implemented for the first
-time in Python 3.5. As Python is not and will not at any time in the future be
-a proper statically typed language, the PEP describes a method of &ldquo;hinting&rdquo; at
+time in Python 3.5. As Python is not and will not at any time in the future be a
+proper statically typed language, the PEP describes a method of &ldquo;hinting&rdquo; at
 types using structured comments and other syntactic sugar which the Python 3.5
 compiler studiously ignores. External utilities can then interpret and enforce
 as they will. While in theory this allows for competition among approaches, at
 present there&rsquo;s only one functional type checker:
 <a href="http://mypy.readthedocs.io/en/latest/">MyPy</a>.</p>
 
-<p>On the whole, I&rsquo;ve very much enjoyed writing typed Python. It&rsquo;s corrected one
-of the Python pain points I&rsquo;ve long chafed against, which is the lack of
-parse-time argument type checking. Duck typing can be nice, but&hellip; okay, it&rsquo;s
-really not all that nice.[4. What I really want as a programmer are hard
-guarantees about the interface and behavior of the thing I&rsquo;m working with.
-Duck typing gets me from written to running faster, but it does little to
-ensure I don&rsquo;t faceplant.] By taking the time to define the classes I want up
-front and define their behavior in unit tests, I&rsquo;m able to write safer,
-cleaner code. By defining the types of parameters, I lose the risk of swapping
-them or leaving them out somewhere.</p>
+<p>On the whole, I&rsquo;ve very much enjoyed writing typed Python. It&rsquo;s corrected one of
+the Python pain points I&rsquo;ve long chafed against, which is the lack of parse-time
+argument type checking. Duck typing can be nice, but&hellip; okay, it&rsquo;s really not
+all that nice. By taking the time to define the classes I want up front and
+define their behavior in unit tests, I&rsquo;m able to write safer, cleaner code. By
+defining the types of parameters, I lose the risk of swapping them or leaving
+them out somewhere.</p>
 
 <p>It&rsquo;s an obvious point, but having better support for static code analysis in
 Python is really very nice.</p>
 
-<p>The downside, of course, is that the third party modules you&rsquo;ll be working
-with probably won&rsquo;t be written in typed Python. After all, PEP 484 is only
-available in the latest version of Python 3. At that point you&rsquo;re left with
-the option of either stubbing out the module in a way that&rsquo;s intelligible to
-MyPy, or telling MyPy to ignore the module and lose the safety of type
-checking in potentially large chunks of your code. So in that sense, writing
-in typed Python feels like working on a rocket strapped to a tricycle.[5.
-Wouldn&rsquo;t be too bad <a href="http://www.huffingtonpost.com/2014/11/10/francois-gissy-rocket-%0Apowered-bicycle_n_6130992.html">if it were a
-bicycle</a>, but nope, it&rsquo;s a tricycle.]</p>
+<p>The downside, of course, is that the third party modules you&rsquo;ll be working with
+probably won&rsquo;t be written in typed Python. After all, PEP 484 is only available
+in the latest version of Python 3. At that point you&rsquo;re left with the option of
+either stubbing out the module in a way that&rsquo;s intelligible to MyPy, or telling
+MyPy to ignore the module and lose the safety of type checking in potentially
+large chunks of your code. So in that sense, writing in typed Python feels like
+working on a rocket strapped to a tricycle.</p>
 
 <p>But at least it&rsquo;s a pretty tricycle.</p>
     </body>
