@@ -18,38 +18,38 @@ performance with this particular task.</p>
 
 <p>When I&rsquo;m parsing through XML code I really want a tree-like structure. Magic
 Parser returns everything in a flat array, with tag names separated by
-slashes. For example:<br/>
-`</p>
+slashes. For example:
+<code>
+&lt;foo&gt;
+    &lt;bar&gt;A&lt;/bar&gt;
+&lt;foo&gt;
+</code></p>
 
-<p> A</p>
-
-<p>`</p>
-
-<p>would return<br/>
-<code>  
-Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")  
+<p>would return
+<code>
+Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")
 </code></p>
 
 <p>This causes problems if there is more than one tag with the same name. For
-example:<br/>
-`</p>
+example:
+<code>
+&lt;foo&gt;
+    &lt;bar&gt;A&lt;/bar&gt;
+    &lt;bar&gt;B&lt;/bar&gt;
+&lt;foo&gt;
+</code></p>
 
-<p> A<br/>
- B</p>
-
-<p>`</p>
-
-<p>They work around this by sending three arrays to the callback function:<br/>
-<code>  
-Array([BAR]=&gt;"A")  
-Array([BAR]=&gt;"B")  
-Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")  
+<p>They work around this by sending three arrays to the callback function:
+<code>
+Array([BAR]=&gt;"A")
+Array([BAR]=&gt;"B")
+Array([FOO]=&gt;"", [FOO/BAR]=&gt;"A")
 </code></p>
 
 <p>This actually makes it harder to process the XML than if I were using
-SimpleXML, as SimpleXML would return:<br/>
-<code>  
-SimpleXML Object([bar]=&gt;Array([0]=&gt;"A", [1]=&gt;"B"))  
+SimpleXML, as SimpleXML would return:
+<code>
+SimpleXML Object([bar]=&gt;Array([0]=&gt;"A", [1]=&gt;"B"))
 </code></p>
 
 <p>In SimpleXML I would just have to cycle through the array attached to the
